@@ -55,12 +55,13 @@ def add_page_title():
     
 # Page 클래스 정의 / 각 페이지 나타내고 제목, 내용,데이터프레임, 그래프, 이미지를 속성으로 가짐
 class Page:
-    def __init__(self, title, content, dfs=None, graphs=None, images=None, df_titles=None, graph_descriptions=None):
+    def __init__(self, title, content, dfs=None, graphs=None, images=None, image_title=None, df_titles=None, graph_descriptions=None):
         self.title = title
         self.content = content
         self.dfs = dfs if dfs is not None else []
         self.graphs = graphs if graphs is not None else []
         self.images = images if images is not None else []
+        self.image_title = image_title if image_title is not None else []
         self.df_titles = df_titles if df_titles is not None else []
         self.graph_descriptions = graph_descriptions if graph_descriptions is not None else []
 
@@ -327,7 +328,7 @@ def show_pages(pages):
                      for image in page.images:
                         st.write('> 2023 제주 숙박 키워드')
                         st.image(image, use_column_width=True)
-                        st.write('2023년 한 해동안 산출된 긍정리뷰 키워드 빈도 수에 따라 크기를 조절한 워드클라우드')
+                        st.write('2023년 제주 숙박 실제 리뷰')
                 
                 # 첫 번째 그래프는 전체 너비로 표시
                 if page.graphs:
@@ -355,31 +356,28 @@ def show_pages(pages):
 
                        
             elif page.title == "지역별 상위 5개 호텔 & 식당 분포":
-                for graph, title in page.graphs:
-                    if isinstance(graph, folium.Map):
-                        st.subheader(title)
-                        folium_static(graph, width=1000, height=400)
-                    elif isinstance(graph, go.Figure):
-                        st.plotly_chart(graph, use_container_width=True)
-                    else:
-                        st.error("Invalid graph object detected for the map display.")
-                        
-            elif page.title == '네이버 식당 리뷰 크롤링':
-                # 처음에 2개의 데이터프레임을 출력
-                st.write(page.dfs[0])
-                st.write(page.dfs[1])
-                
-                # 이미지 파일을 한 줄에 두 개씩 열로 나누어 출력
-                if len(page.images) >= 2:
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.image(page.images[0], caption='제주시 식당 키워드', use_column_width=True)
-                    with col2:
-                        st.image(page.images[1], caption='서귀포시 식당 키워드', use_column_width=True)
+                if page.graphs:
+                    for graph, title in page.graphs:
+                        if isinstance(graph, folium.Map):
+                            st.subheader(title)
+                            folium_static(graph, width=1000, height=400)
+                        elif isinstance(graph, go.Figure):
+                            st.plotly_chart(graph, use_container_width=True)
+                        else:
+                            st.error("Invalid graph object detected for the map display.")
+                else:
+                     st.error("No graphs found for the specified title.")
+                     
+            elif page.title == "네이버 식당 리뷰 크롤링":
+                if page.images:
+                    col1, col2 = st.columns(2)  # 두 개의 열 생성
+                    for i, (image, description) in enumerate(zip(page.images, page.image_title)):
+                        title = page.image_title[i]  # 각 이미지에 해당하는 제목을 가져옴
+                        with col1 if i % 2 == 0 else col2:
+                            st.write(title)  # 수정된 부분: title 변수 사용
+                            st.image(image, use_column_width=True)
+                            
 
-                # 다시 데이터프레임 출력
-                st.write(page.dfs[2])
-                        
             elif page.title == "추천시스템_제주시":
                 recommend_restaurant_city()
                 
@@ -1817,13 +1815,14 @@ pages = [
     Page("네이버 식당 리뷰 크롤링",
          """
          """,
-         images=[wordcloud_city_keyword,wordcloud_downtown_keyword],
          dfs=[jeju_city_review, jeju_downtown_review, final_city_review, final_downtown_review],
          df_titles=['제주시 식당 리뷰 크롤링', 
                     '서귀포시 식당 리뷰 크롤링',
                     '자연어 처리 후 토큰화 최종 키워드(제주시)',
                     '자연어 처리 후 토큰화 최종 키워드(서귀포시)'
-        ]
+        ],
+         image_title=['제주시 리뷰 키워드', '서귀포시 리뷰 키워드'],
+         images=[wordcloud_city_keyword,wordcloud_downtown_keyword]
     ),
     Page("추천시스템_제주시",
          """
