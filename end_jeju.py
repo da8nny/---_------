@@ -110,19 +110,24 @@ def get_recommendations_by_user_input_with_hotel_city(user_input, hotel_name, tf
 
     return recommended_restaurants_city, similarity_scores
 
+
+# 사용자에게 식당 추천하는 함수
 # 사용자에게 식당 추천하는 함수
 def recommend_restaurant_city():
     st.subheader('> 제주시')
-    #user_hotel = input("어느 호텔에서 묵고 계신가요? ")
-    user_hotel = st.text_input("어느 호텔에서 묵고 계신가요? ")
 
-    # 입력한 호텔명이 데이터에 있는지 확인
-    if user_hotel not in final_city_review['숙박업명'].values:
-        #print("입력하신 호텔은 존재하지 않습니다.")
-        st.write("입력하신 호텔은 존재하지 않습니다.")
+    # 중복 제거한 숙박업명 목록 생성
+    unique_hotels = set(final_city_review['숙박업명'].values)
+
+    # 사용자가 선택할 수 있는 드롭다운 메뉴 생성
+    user_hotel = st.selectbox("어느 호텔에서 묵고 계신가요?", sorted(unique_hotels))
+
+    # 사용자가 호텔을 선택하지 않았을 경우
+    if not user_hotel:
+        st.warning("호텔을 선택해주세요.")
         return
 
-    #user_input = input("어떤 식당을 찾으시나요? ")
+    # 사용자 입력 받기
     user_input = st.text_input("어떤 식당을 찾으시나요? ")
 
     # 호텔과 사용자 입력에 기반한 식당 추천 및 유사도 가져오기
@@ -131,13 +136,17 @@ def recommend_restaurant_city():
     if recommended_restaurants.empty:
         #print("입력하신 조건에 부합하는 식당이 없습니다.")
         st.write("입력하신 조건에 부합하는 식당이 없습니다.")
-    if user_hotel and user_input:
-        #print("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
-        st.write("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
-        for (restaurant, search_count, distance), score in zip(recommended_restaurants.values, similarity_scores):
-            distance = round(distance, 2)
-            st.write(f"식당명: {restaurant}  /  유사도: {score}  /  식당 검색량: {search_count} 건  /  숙박-식당 거리: {distance} km")
-
+    elif user_hotel and user_input:
+        with st.container():
+            st.info("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
+            for idx, (restaurant, search_count, distance) in enumerate(recommended_restaurants.values):
+                distance = round(distance, 2)
+                score = similarity_scores[idx]
+                st.write(f"### {restaurant}")
+                st.write(f"**유사도:** {score}")
+                st.write(f"**식당 검색량:** {search_count} 건")
+                st.write(f"**숙박-식당 거리:** {distance} km")
+                st.write("---")  # 각 식당의 정보를 구분하기 위해 수평 선 추가
 
 path = os.path.dirname(__file__)
 with open (path+'/indices_1.pkl', 'rb') as f:
@@ -183,13 +192,15 @@ def get_recommendations_by_user_input_with_hotel_downtown(user_input, hotel_name
 # 사용자에게 식당 추천하는 함수
 def recommend_restaurant_downtown():
     st.subheader('> 서귀포시')
-    #user_hotel = input("어느 호텔에서 묵고 계신가요? ")
-    user_hotel = st.text_input("어느 호텔에서 묵고 계신가요? ", key="hotel_input")
-    
-    # 입력한 호텔명이 데이터에 있는지 확인
-    if user_hotel not in final_downtown_review['숙박업명'].values:
-        #print("입력하신 호텔은 존재하지 않습니다.")
-        st.write("입력하신 호텔은 존재하지 않습니다.")
+    # 중복 제거한 숙박업명 목록 생성
+    unique_hotels = set(final_downtown_review['숙박업명'].values)
+
+    # 사용자가 선택할 수 있는 드롭다운 메뉴 생성
+    user_hotel = st.selectbox("어느 호텔에서 묵고 계신가요?", sorted(unique_hotels))
+
+    # 사용자가 호텔을 선택하지 않았을 경우
+    if not user_hotel:
+        st.warning("호텔을 선택해주세요.")
         return
 
     #user_input = input("어떤 식당을 찾으시나요? ")
@@ -201,13 +212,17 @@ def recommend_restaurant_downtown():
     if recommended_restaurants.empty:
         #print("입력하신 조건에 부합하는 식당이 없습니다.")
         st.write("입력하신 조건에 부합하는 식당이 없습니다.")
-    if user_hotel and user_input:
-        #print("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
-        st.write("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
-        for (restaurant, search_count, distance), score in zip(recommended_restaurants.values, similarity_scores):
-            distance = round(distance, 2)
-            st.write(f"식당명: {restaurant}  /  유사도: {score}  /  식당 검색량: {search_count} 건  /  숙박-식당 거리: {distance} km")
-
+    elif user_hotel and user_input:
+        with st.container():
+            st.info("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
+            for idx, (restaurant, search_count, distance) in enumerate(recommended_restaurants.values):
+                distance = round(distance, 2)
+                score = similarity_scores[idx]
+                st.write(f"### {restaurant}")
+                st.write(f"**유사도:** {score}")
+                st.write(f"**식당 검색량:** {search_count} 건")
+                st.write(f"**숙박-식당 거리:** {distance} km")
+                st.write("---")  # 각 식당의 정보를 구분하기 위해 수평 선 추가
 
 
 
@@ -356,27 +371,26 @@ def show_pages(pages):
 
                        
             elif page.title == "지역별 상위 5개 호텔 & 식당 분포":
-                if page.graphs:
-                    for graph, title in page.graphs:
+                for graph_info in page.graphs:
+                    if isinstance(graph_info, tuple) and len(graph_info) == 2:
+                        graph, description = graph_info
                         if isinstance(graph, folium.Map):
-                            st.subheader(title)
+                            if description:
+                                st.subheader(f"{description}") 
                             folium_static(graph, width=1000, height=400)
                         elif isinstance(graph, go.Figure):
-                            st.plotly_chart(graph, use_container_width=True)
+                            st.plotly_chart(graph, use_container_width=False, width=1200)
+                            if description:
+                                st.write(description)
                         else:
-                            st.error("Invalid graph object detected for the map display.")
-                else:
-                     st.error("No graphs found for the specified title.")
-                     
-            elif page.title == "네이버 식당 리뷰 크롤링":
-                if page.images:
-                    col1, col2 = st.columns(2)  # 두 개의 열 생성
-                    for i, (image, description) in enumerate(zip(page.images, page.image_title)):
-                        title = page.image_title[i]  # 각 이미지에 해당하는 제목을 가져옴
-                        with col1 if i % 2 == 0 else col2:
-                            st.write(title)  # 수정된 부분: title 변수 사용
-                            st.image(image, use_column_width=True)
-                            
+                            st.error("Invalid graph object detected for display.")
+                    elif isinstance(graph_info, (folium.Map, go.Figure)):
+                        if isinstance(graph_info, folium.Map):
+                            folium_static(graph_info, width=1000, height=400)
+                        elif isinstance(graph_info, go.Figure):
+                            st.plotly_chart(graph_info, use_container_width=False, width=1200)
+                    else:
+                        st.error("Invalid graph object detected for display.")
 
             elif page.title == "추천시스템_제주시":
                 recommend_restaurant_city()
