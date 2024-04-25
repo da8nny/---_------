@@ -75,6 +75,8 @@ with open(path+'/tfidf_matrix.pkl', 'rb') as f:
     tfidf_matrix = pickle.load(f)
 with open(path+'/tfidf.pkl', 'rb') as f:
     tfidf = pickle.load(f)
+with open(path+'/tfidf_1.pkl', 'rb') as f:
+    tfidf_1 = pickle.load(f)
 
 
 
@@ -123,7 +125,7 @@ def recommend_restaurant_city():
     user_input = st.text_input("어떤 식당을 찾으시나요? ")
 
     # 호텔과 사용자 입력에 기반한 식당 추천 및 유사도 가져오기
-    recommended_restaurants, similarity_scores = get_recommendations_by_user_input_with_hotel_city(user_input, user_hotel, tfidf, cosine_sim)
+    recommended_restaurants, similarity_scores = get_recommendations_by_user_input_with_hotel_city(user_input, user_hotel, tfidf_1, cosine_sim)
 
     if recommended_restaurants.empty:
         #print("입력하신 조건에 부합하는 식당이 없습니다.")
@@ -145,7 +147,8 @@ with open(path+'/final_downtown_review.pkl', 'rb') as f:
     final_downtown_review = pickle.load(f)
 with open(path+'/tfidf_matrix_1.pkl', 'rb') as f:
     tfidf_matrix_1 = pickle.load(f)
-
+with open(path+'/tfidf.pkl', 'rb') as f:
+    tfidf = pickle.load(f)
     
 # 추천2) 서귀포시
 def get_user_input_vector(user_input, tfidf_model):
@@ -322,7 +325,9 @@ def show_pages(pages):
             elif page.title == '숙박 리뷰 키워드_호텔 점수 산정':
                 if page.images:
                      for image in page.images:
+                        st.write('> 2023 제주 숙박 키워드')
                         st.image(image, use_column_width=True)
+                        st.write('2023년 한 해동안 산출된 긍정리뷰 키워드 빈도 수에 따라 크기를 조절한 워드클라우드')
                 
                 # 첫 번째 그래프는 전체 너비로 표시
                 if page.graphs:
@@ -350,12 +355,12 @@ def show_pages(pages):
 
                        
             elif page.title == "지역별 상위 5개 호텔 & 식당 분포":
-                for graph in page.graphs:
+                for graph, title in page.graphs:
                     if isinstance(graph, folium.Map):
+                        st.subheader(title)
                         folium_static(graph, width=1000, height=400)
-                    elif fig_distance is not None and fig_search_count is not None:  # 두 그래프가 모두 존재하는지 확인
-                        st.plotly_chart(fig_distance, use_container_width=True)
-                        st.plotly_chart(fig_search_count, use_container_width=True)
+                    elif isinstance(graph, go.Figure):
+                        st.plotly_chart(graph, use_container_width=True)
                     else:
                         st.error("Invalid graph object detected for the map display.")
                         
@@ -1614,7 +1619,7 @@ fig31.add_trace(go.Bar(
 ))
 
 fig31.update_layout(
-    title='가중치를 고려하여 평가된 최종 40개 숙박업의 점수',
+    title='  가중치 점수 반영된 최종 40개 숙박업의 점수',
     xaxis=dict(title='숙박업명'),
     yaxis=dict(title='ratio_weight'),
 )
@@ -1635,7 +1640,7 @@ for area, area_df in grouped_df:
     ))
 
 fig32.update_layout(
-    title='제주시/서귀포시 점수 상위 5개 호텔',
+    title='  제주시/서귀포시 점수 상위 5개 호텔',
     xaxis=dict(title='숙박업명'),
     yaxis=dict(title='ratio_weight'),
     barmode='group'
@@ -1801,8 +1806,8 @@ pages = [
     Page("지역별 상위 5개 호텔 & 식당 분포",
          """
          """,
-         graphs=[map_lodge(final_accomodation_recommendation),
-                 restaurant_map(final_accomodation_recommendation, final_food_df),
+         graphs=[(map_lodge(final_accomodation_recommendation),"선정된 10개의 숙박업소 위치"),
+                 (restaurant_map(final_accomodation_recommendation, final_food_df), "호텔별 최단거리 식당과 최다 검색량 식당 위치"),
                  fig_distance, fig_search_count],
          graph_descriptions=["리뷰 기반 점수 시별 상위 5곳 호텔",
                              "거리/검색량 기반 호텔별 식당 추천",
