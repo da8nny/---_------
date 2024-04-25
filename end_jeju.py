@@ -17,6 +17,10 @@ from prophet import Prophet
 from prophet.plot import plot_plotly, plot_components_plotly
 import os
 from sklearn.metrics.pairwise import linear_kernel
+from folium.plugins import MarkerCluster # 마커가 지저분하게 표기되는 것을 방지 -> 군집화해서 시각화하는 라이브러리
+from haversine import haversine
+from folium import Figure
+
 
 # 타이틀, 아이콘, 레이아웃 설정
 st.set_page_config(
@@ -73,58 +77,63 @@ with open(path+'/tfidf.pkl', 'rb') as f:
     tfidf = pickle.load(f)
 
 
+
 # 추천1) 제주시 
-def get_user_input_vector(user_input, tfidf_model):
+def get_user_input_vector_city(user_input, tfidf_model):
     return tfidf_model.transform([user_input])
 
 
-def get_recommendations_by_user_input_with_hotel(user_input, hotel_name, tfidf_model, cosine_sim=cosine_sim):
+def get_recommendations_by_user_input_with_hotel_city(user_input, hotel_name, tfidf_model, cosine_sim=cosine_sim):
     # 호텔에 부합하는 행들 필터링
-    hotel_indices = final_city_review[final_city_review['숙박업명'] == hotel_name].index
+    hotel_indices_city = final_city_review[final_city_review['숙박업명'] == hotel_name].index
 
     # TF-IDF 벡터 생성
-    user_tfidf_vector = get_user_input_vector(user_input, tfidf_model)
+    user_tfidf_vector_city = get_user_input_vector_city(user_input, tfidf_model)
 
     # 사용자 입력과 호텔 필터링을 고려한 코사인 유사도 계산
-    cosine_sim_user = linear_kernel(user_tfidf_vector, tfidf_matrix[hotel_indices])
+    cosine_sim_user_city = linear_kernel(user_tfidf_vector_city, tfidf_matrix[hotel_indices_city])
 
     # 유사도가 높은 순으로 정렬
-    sim_scores = list(enumerate(cosine_sim_user[0]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+    sim_scores_city = list(enumerate(cosine_sim_user_city[0]))
+    sim_scores_city = sorted(sim_scores_city, key=lambda x: x[1], reverse=True)
 
     # 상위 5개 식당 추출
-    sim_scores = sim_scores[:5]
-    restaurant_indices = [hotel_indices[i[0]] for i in sim_scores]
+    sim_scores_city = sim_scores_city[:5]
+    restaurant_indices_city = [hotel_indices_city[i[0]] for i in sim_scores_city]
 
     # 추천 식당과 유사도 반환
-    recommended_restaurants = final_city_review.iloc[restaurant_indices][['식당명', '검색량합계값', '숙박_식당 거리']]
-    similarity_scores = [round(i[1], 3) for i in sim_scores]
+    recommended_restaurants_city = final_city_review.iloc[restaurant_indices_city][['식당명', '검색량합계값', '숙박_식당 거리']]
+    similarity_scores = [round(i[1], 3) for i in sim_scores_city]
 
-    return recommended_restaurants, similarity_scores
+    return recommended_restaurants_city, similarity_scores
 
 # 사용자에게 식당 추천하는 함수
 def recommend_restaurant_city():
     st.subheader('> 제주시')
-    user_hotel = input("어느 호텔에서 묵고 계신가요? ")
+    #user_hotel = input("어느 호텔에서 묵고 계신가요? ")
+    user_hotel = st.text_input("어느 호텔에서 묵고 계신가요? ")
 
     # 입력한 호텔명이 데이터에 있는지 확인
     if user_hotel not in final_city_review['숙박업명'].values:
-        print("입력하신 호텔은 존재하지 않습니다.")
+        #print("입력하신 호텔은 존재하지 않습니다.")
+        st.write("입력하신 호텔은 존재하지 않습니다.")
         return
 
-    user_input = input("어떤 식당을 찾으시나요? ")
+    #user_input = input("어떤 식당을 찾으시나요? ")
+    user_input = st.text_input("어떤 식당을 찾으시나요? ")
 
     # 호텔과 사용자 입력에 기반한 식당 추천 및 유사도 가져오기
-    recommended_restaurants, similarity_scores = get_recommendations_by_user_input_with_hotel(user_input, user_hotel, tfidf, cosine_sim)
+    recommended_restaurants, similarity_scores = get_recommendations_by_user_input_with_hotel_city(user_input, user_hotel, tfidf, cosine_sim)
 
     if recommended_restaurants.empty:
-        print("입력하신 조건에 부합하는 식당이 없습니다.")
+        #print("입력하신 조건에 부합하는 식당이 없습니다.")
+        st.write("입력하신 조건에 부합하는 식당이 없습니다.")
     if user_hotel and user_input:
-        print("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
+        #print("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
+        st.write("입력하신 조건과 호텔에 부합하는 식당을 아래와 같이 추천드립니다:")
         for (restaurant, search_count, distance), score in zip(recommended_restaurants.values, similarity_scores):
             distance = round(distance, 2)
-            print(f"식당명: {restaurant} / 유사도: {score} / 검색량합계값: {search_count} 건 / 숙박-식당 거리: {distance} km")
-
+            st.write(f"식당명: {restaurant}  /  유사도: {score}  /  식당 검색량: {search_count} 건  /  숙박-식당 거리: {distance} km")
 
 
 path = os.path.dirname(__file__)
@@ -142,7 +151,7 @@ with open(path+'/tfidf_matrix_1.pkl', 'rb') as f:
 def get_user_input_vector(user_input, tfidf_model):
     return tfidf_model.transform([user_input])
 
-def get_recommendations_by_user_input_with_hotel(user_input, hotel_name, tfidf_model, cosine_sim=cosine_sim_1):
+def get_recommendations_by_user_input_with_hotel_downtown(user_input, hotel_name, tfidf_model, cosine_sim=cosine_sim_1):
     # 호텔에 부합하는 행들 필터링
     hotel_indices = final_downtown_review[final_downtown_review['숙박업명'] == hotel_name].index
 
@@ -183,7 +192,7 @@ def recommend_restaurant_downtown():
     user_input = st.text_input("어떤 식당을 찾으시나요? ")
 
     # 호텔과 사용자 입력에 기반한 식당 추천 및 유사도 가져오기
-    recommended_restaurants, similarity_scores = get_recommendations_by_user_input_with_hotel(user_input, user_hotel, tfidf, cosine_sim_1)
+    recommended_restaurants, similarity_scores = get_recommendations_by_user_input_with_hotel_downtown(user_input, user_hotel, tfidf, cosine_sim_1)
 
     if recommended_restaurants.empty:
         #print("입력하신 조건에 부합하는 식당이 없습니다.")
@@ -280,20 +289,20 @@ def show_pages(pages):
             if page.title in ["관광 현황 - 동반자 유형별 분석", "농협카드 - 시계열 모델링"]:
                 # 첫 번째 그래프는 전체 너비로 표시
                 if page.graphs:
-                    if isinstance(page.graphs[0], Figure):
+                    if isinstance(page.graphs[0], go.Figure):
                         st.plotly_chart(page.graphs[0], use_container_width=True)
                         if len(page.graph_descriptions) > 0:
                             st.write(page.graph_descriptions[0])  # 첫 번째 그래프의 설명 추가
                     else:
                         st.error("Invalid graph object detected.")
-
+                
                 # 그 이후 그래프를 두 개씩 나열
                 col_index = 0
                 cols = [None, None]  # 두 개의 열을 위한 임시 리스트
                 for i, graph in enumerate(page.graphs[1:]):  # 첫 번째 그래프를 제외하고 시작
                     if col_index == 0:
                         cols = st.columns(2)  # 두 열 생성
-                    if isinstance(graph, Figure):
+                    if isinstance(graph, go.Figure):
                         cols[col_index].plotly_chart(graph, use_container_width=True)
                         if i + 1 < len(page.graph_descriptions):  # 설명이 있으면 출력
                             cols[col_index].write(page.graph_descriptions[i + 1])
@@ -301,6 +310,7 @@ def show_pages(pages):
                         cols[col_index].error("Invalid graph object detected.")
                     
                     col_index = (col_index + 1) % 2  # 0, 1, 0, 1, ...으로 변경하여 열을 번갈아 선택
+                                    
                    
             elif page.title == "분류별 추천 관광지":
                 for graph in page.graphs:
@@ -308,10 +318,69 @@ def show_pages(pages):
                         folium_static(graph, width=1000, height=800)
                     else:
                         st.error("Invalid graph object detected for the map display.")
+                        
+            elif page.title == '숙박 리뷰 키워드_호텔 점수 산정':
+                if page.images:
+                     for image in page.images:
+                        st.image(image, use_column_width=True)
+                
+                # 첫 번째 그래프는 전체 너비로 표시
+                if page.graphs:
+                    if isinstance(page.graphs[0], go.Figure):
+                        st.plotly_chart(page.graphs[0], use_container_width=True)
+                        if len(page.graph_descriptions) > 0:
+                            st.write(page.graph_descriptions[0])  # 첫 번째 그래프의 설명 추가
+                    else:
+                        st.error("Invalid graph object detected.")
+                
+                # 그 이후 그래프를 두 개씩 나열
+                col_index = 0
+                cols = [None, None]  # 두 개의 열을 위한 임시 리스트
+                for i, graph in enumerate(page.graphs[1:]):  # 첫 번째 그래프를 제외하고 시작
+                    if col_index == 0:
+                        cols = st.columns(2)  # 두 열 생성
+                    if isinstance(graph, go.Figure):
+                        cols[col_index].plotly_chart(graph, use_container_width=True)
+                        if i + 1 < len(page.graph_descriptions):  # 설명이 있으면 출력
+                            cols[col_index].write(page.graph_descriptions[i + 1])
+                    else:
+                        cols[col_index].error("Invalid graph object detected.")
+                    
+                    col_index = (col_index + 1) % 2  # 0, 1, 0, 1, ...으로 변경하여 열을 번갈아 선택
+
+                       
+            elif page.title == "지역별 상위 5개 호텔 & 식당 분포":
+                for graph in page.graphs:
+                    if isinstance(graph, folium.Map):
+                        folium_static(graph, width=1000, height=400)
+                    elif fig_distance is not None and fig_search_count is not None:  # 두 그래프가 모두 존재하는지 확인
+                        st.plotly_chart(fig_distance, use_container_width=True)
+                        st.plotly_chart(fig_search_count, use_container_width=True)
+                    else:
+                        st.error("Invalid graph object detected for the map display.")
+                        
+            elif page.title == '네이버 식당 리뷰 크롤링':
+                # 처음에 2개의 데이터프레임을 출력
+                st.write(page.dfs[0])
+                st.write(page.dfs[1])
+                
+                # 이미지 파일을 한 줄에 두 개씩 열로 나누어 출력
+                if len(page.images) >= 2:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.image(page.images[0], caption='제주시 식당 키워드', use_column_width=True)
+                    with col2:
+                        st.image(page.images[1], caption='서귀포시 식당 키워드', use_column_width=True)
+
+                # 다시 데이터프레임 출력
+                st.write(page.dfs[2])
+                        
             elif page.title == "추천시스템_제주시":
                 recommend_restaurant_city()
+                
             elif page.title == '추천시스템_서귀포시':
                 recommend_restaurant_downtown()
+                
             elif page.title == "향후 계획":
                 add_future_plans_page()                  
             else:
@@ -1380,14 +1449,128 @@ rest_1 = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/�
 rest_2 = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/제주숙박주변식당/HW_JJ_LDGS_CFR_RSTRNT_PREFEER_INFO_202306.csv')
 rest_3 = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/제주숙박주변식당/HW_JJ_LDGS_CFR_RSTRNT_PREFEER_INFO_202309.csv')
 ###################################
-jeju_downtown_review = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/네이버리뷰_크롤링/jeju_downtown_review.csv')
-jeju_city_review = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/네이버리뷰_크롤링/jeju_city_review.csv')
+jeju_downtown_review = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/네이버리뷰_크롤링/jeju_downtown_review.csv', index_col=0)
+jeju_city_review = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/네이버리뷰_크롤링/jeju_city_review.csv', index_col=0)
 ###################################
 total_keyword = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/제주숙박리뷰키워드(a).csv')
 review_explode = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/제주숙박리뷰키워드(b).csv')
 ###################################
 keyword_final = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/final_keyword.csv')
+##################################
 final_accomodation_recommendation = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/final_hotel_recommendation.csv')
+
+def map_lodge(df):
+  lodge_map = folium.Map(location=[33.3617, 126.5332], zoom_start=10)
+
+
+  for index, row in final_accomodation_recommendation.iterrows():
+      location = [row['위도'], row['경도']]
+      popup = folium.Popup(f"<b style='font-size: 16px;'>{row['숙박업명']}</b>", max_width=300) # </b>~</b> 글씨 진하게
+      folium.Marker(location=location, popup=popup).add_to(lodge_map)
+      
+  return lodge_map
+###################################
+final_food_df = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/제주_검색량_거리.csv')
+
+# 호텔별 최단거리 / 검색량 최고 호텔
+def restaurant_map(df_1, df_2):
+    m = folium.Map(location=[33.3617, 126.5332], zoom_start=10)
+    marker_cluster = MarkerCluster().add_to(m)
+
+    # 숙박 업소
+    for index, row in df_1.iterrows():
+        location = [row['위도'], row['경도']]
+        popup = folium.Popup(f"<b style='font-size: 16px;'>{row['숙박업명']}</b>", max_width=300)
+        folium.Marker(location=location, popup=popup, icon=folium.Icon(color='purple')).add_to(m)
+
+        folium.Circle(location=location, radius=3000, color='gray', fill=True, fill_color='gray').add_to(m)
+
+        # 숙박 업소와 가장 가까운 식당 찾기
+        min_distance = float('inf')
+        closest_restaurant_loc = None
+        for _, restaurant_row in df_2.iterrows():
+            restaurant_loc = [restaurant_row['식당위도'], restaurant_row['식당경도']]
+            distance = haversine(location, restaurant_loc)
+            if distance < min_distance:
+                min_distance = distance
+                closest_restaurant_loc = restaurant_loc
+
+        # 숙박 업소와 가장 가까운 식당의 마커와 연결선 그리기
+        if closest_restaurant_loc:
+            popup = folium.Popup(f"<b style='font-size: 16px;'>{restaurant_row['식당명']}</b>", max_width=300)
+            folium.Marker(location=closest_restaurant_loc,
+                          popup=popup,
+                          icon=folium.Icon(color='blue')).add_to(m)
+            folium.PolyLine(locations=[location, closest_restaurant_loc], color='blue').add_to(m)
+
+        # 해당 숙박 업소에 대한 검색량이 가장 높은 식당 찾기
+        accomodation_name = row['숙박업명']
+        most_searched_restaurant = df_2[df_2['숙박업명'] == accomodation_name].iloc[0]
+        most_searched_restaurant_loc = [most_searched_restaurant['식당위도'], most_searched_restaurant['식당경도']]
+
+        # 숙박 업소와 가장 검색량이 높은 식당의 마커와 연결선 그리기
+        popup= folium.Popup(f"<b style='font-size: 16px;'>{most_searched_restaurant['식당명']}</b>", max_width=300)
+        folium.Marker(location=most_searched_restaurant_loc,
+                      popup=popup,
+                      icon=folium.Icon(color='light red')).add_to(m)
+        folium.PolyLine(locations=[location, most_searched_restaurant_loc], color='red').add_to(m)
+
+    # 군집화할 나머지 식당
+    for index, row in df_2.iterrows():
+        location = [row['식당위도'], row['식당경도']]
+        popup = folium.Popup(f"<b style='font-size: 16px;'>{row['식당명']}</b>", max_width=300)
+        folium.Marker(location=location, popup=popup, icon=None).add_to(marker_cluster)
+
+    return m
+  
+###################################
+restaurant_info_df = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/숙박업별_최단거리_최다검색.csv')
+
+fig_distance = go.Figure()
+
+fig_distance.add_trace(go.Bar(
+    x=restaurant_info_df['최단거리'],
+    y=restaurant_info_df['숙박업명'],
+    text=restaurant_info_df['가장가까운식당'],  # 막대 위에 텍스트 추가
+    textposition='inside',  # 텍스트 위치 설정
+    name='Closest Restaurant',
+    orientation='h',  # 수평 막대 그래프
+    marker=dict(color='skyblue'),  # 막대 색상 지정
+))
+
+fig_distance.update_layout(
+    title='숙박업별 최단 거리 추천식당',
+    xaxis=dict(title='거리 (km)'),
+    yaxis=dict(title='숙박업명'),
+    bargap=0.1,  # 막대 간 간격 조정
+)
+
+# 검색량을 나타내는 그래프
+fig_search_count = go.Figure()
+
+fig_search_count.add_trace(go.Bar(
+    x=restaurant_info_df['최고검색량'],
+    y=restaurant_info_df['숙박업명'],
+    text=restaurant_info_df['가장높은검색량식당'],  # 막대 위에 텍스트 추가
+    textposition='inside',  # 텍스트 위치 설정
+    name='Most Searched Restaurant',
+    orientation='h',  # 수평 막대 그래프
+    marker=dict(color='lightgreen'),  # 막대 색상 지정
+))
+
+fig_search_count.update_layout(
+    title='숙박업별 최다 검색량 추천식당',
+    xaxis=dict(title='검색량 합계값'),
+    yaxis=dict(title='숙박업명'),
+    bargap=0.1,
+)  # 막대 간 간격 조정
+###################################
+wordcloud_pos_review = Image.open("C:/Users/정도영/Desktop/제주도_최종프로젝트/숙박시설리뷰감성분석/워드클라우드_제주리뷰키워드.png")
+wordcloud_city_keyword = Image.open('C:/Users/정도영/Desktop/제주도_최종프로젝트/숙박시설리뷰감성분석/wordcloud_city_keyword.png')
+wordcloud_downtown_keyword = Image.open('C:/Users/정도영/Desktop/제주도_최종프로젝트/숙박시설리뷰감성분석/wordcloud_downtown_keyword.png')
+###################################
+final_city_review = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/final_city_review.csv', index_col=0)
+final_downtown_review = pd.read_csv('C:/Users/정도영/Desktop/제주도_최종프로젝트/전처리데이터셋/final_downtown_review.csv', index_col=0)
 
 
 
@@ -1408,18 +1591,16 @@ fig24.update_layout(
 )
 
 
-
-# ratio_weight 값으로 내림차순 정렬
+    # ratio_weight 값으로 내림차순 정렬
 keyword_final_sorted = keyword_final.sort_values(by='ratio_weight', ascending=False)
 
-# 점수 범위에 따라 색상 설정
+    # 점수 범위에 따라 색상 설정
 colors = ['rgb(31, 119, 180)', 'rgb(255, 127, 14)', 'rgb(44, 160, 44)', 'rgb(214, 39, 40)']
 keyword_final_sorted['color'] = pd.cut(keyword_final_sorted['ratio_weight'],
                                        bins=[0, 9.99, 10, 10.99, float('inf')],
                                        labels=colors,
                                        right=False)
 
-# 막대 그래프 생성
 fig31 = go.Figure()
 
 fig31.add_trace(go.Bar(
@@ -1439,11 +1620,11 @@ fig31.update_layout(
 )
 
 
+# 제주시/서귀포시 상위 5개 호텔 점수
 grouped_df = final_accomodation_recommendation.groupby('구역')
 
 fig32 = go.Figure()
 
-# 각 구역별로 막대 그래프를 추가
 for area, area_df in grouped_df:
     fig32.add_trace(go.Bar(
         x=area_df['숙박업명'],
@@ -1459,6 +1640,16 @@ fig32.update_layout(
     yaxis=dict(title='ratio_weight'),
     barmode='group'
 )
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1595,21 +1786,40 @@ pages = [
          """,
          graphs=[create_map(combined_df)]
     ),
-    Page("숙박 리뷰 키워드_ 호텔 점수 산정",
+    Page("숙박 리뷰 키워드_호텔 점수 산정",
          """
     
          """,
+         images=[wordcloud_pos_review],
          graphs=[fig24, fig31,fig32],
          graph_descriptions=[
-             "각 키워드의 출현 빈도를 전체 키워드의 출현 총계로 나누어서, 각 키워드에 대한 점수에 빈도 비율에 해당하는 가중치를 부여한 점수 분포"
+             "각 키워드의 출현 빈도를 전체 키워드의 출현 총계로 나누어서, 각 키워드에 대한 점수에 빈도 비율에 해당하는 가중치를 부여한 점수 분포",
+             "리뷰를 가진 제주도 호텔 40곳을 뽑아, 가중치 점수를 반영하여 각 호텔별 키워드 점수를 산출한 통계 ",
+             "그 중 제주시/서귀포시 두 구역으로 나누어 점수가 높은 5곳의 호텔을 각각 선정"
          ]
     ),
     Page("지역별 상위 5개 호텔 & 식당 분포",
          """
-         """),
+         """,
+         graphs=[map_lodge(final_accomodation_recommendation),
+                 restaurant_map(final_accomodation_recommendation, final_food_df),
+                 fig_distance, fig_search_count],
+         graph_descriptions=["리뷰 기반 점수 시별 상위 5곳 호텔",
+                             "거리/검색량 기반 호텔별 식당 추천",
+                             "서귀포시는 제주시에 비해 추천식당이 비교적 거리가 있다."] # 왜 안나오는가
+         
+    ),
     Page("네이버 식당 리뷰 크롤링",
          """
-         """),
+         """,
+         images=[wordcloud_city_keyword,wordcloud_downtown_keyword],
+         dfs=[jeju_city_review, jeju_downtown_review, final_city_review, final_downtown_review],
+         df_titles=['제주시 식당 리뷰 크롤링', 
+                    '서귀포시 식당 리뷰 크롤링',
+                    '자연어 처리 후 토큰화 최종 키워드(제주시)',
+                    '자연어 처리 후 토큰화 최종 키워드(서귀포시)'
+        ]
+    ),
     Page("추천시스템_제주시",
          """
          """),
